@@ -1,4 +1,6 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 
 namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
 {
@@ -15,7 +17,7 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
         public static bool TryDatabaseOperation(JetConnection connection, string commandText)
         {
             var match = _renameTableRegex.Match(commandText);
-            if (match.Success)
+            if (match.Success && OperatingSystem.IsWindows())
             {
                 var oldTableName = match.Groups["OldTableName"].Value;
                 var newTableName = match.Groups["NewTableName"].Value;
@@ -26,7 +28,7 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
             }
 
             match = _renameTableColumnRegex.Match(commandText);
-            if (match.Success)
+            if (match.Success && OperatingSystem.IsWindows())
             {
                 var tableName = match.Groups["TableName"].Value;
                 var oldColumnName = match.Groups["OldColumnName"].Value;
@@ -43,12 +45,14 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
         private static string GetIdentifierPattern(string key)
             => $@"(?:`(?<{key}>.*?)`|\[(?<{key}>.*?)\]|(?<{key}>\S*))";
         
+        [SupportedOSPlatform("windows")]
         private static void RenameTable(JetConnection connection, string oldTableName, string newTableName)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection, false);
             schemaProvider.RenameTable(oldTableName, newTableName);
         }
 
+        [SupportedOSPlatform("windows")]
         private static void RenameColumn(JetConnection connection, string tableName, string oldColumnName, string newColumnName)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection, false);

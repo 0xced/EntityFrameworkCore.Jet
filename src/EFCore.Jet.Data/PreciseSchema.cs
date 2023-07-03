@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Runtime.Versioning;
 
 namespace EntityFrameworkCore.Jet.Data
 {
@@ -8,6 +9,7 @@ namespace EntityFrameworkCore.Jet.Data
         private readonly Lazy<AdoxSchema> _adoxSchema;
         private readonly Lazy<DaoSchema> _daoSchema;
 
+        [SupportedOSPlatform("windows")]
         public PreciseSchema(JetConnection connection, bool readOnly)
         {
             _adoxSchema = new Lazy<AdoxSchema>(() => new AdoxSchema(connection, true, readOnly), false);

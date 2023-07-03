@@ -1,5 +1,6 @@
 using System;
 using System.Data;
+using System.Runtime.Versioning;
 
 namespace EntityFrameworkCore.Jet.Data
 {
@@ -12,6 +13,7 @@ namespace EntityFrameworkCore.Jet.Data
 
     public abstract class SchemaProvider : ISchemaProvider, ISchemaOperationsProvider
     {
+        [SupportedOSPlatform("windows")]
         public static SchemaProvider CreateInstance(SchemaProviderType type, JetConnection connection, bool readOnly = true)
             => type switch
             {

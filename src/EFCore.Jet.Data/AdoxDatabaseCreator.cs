@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.Versioning;
 using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 
 namespace EntityFrameworkCore.Jet.Data
@@ -6,6 +7,7 @@ namespace EntityFrameworkCore.Jet.Data
     public class AdoxDatabaseCreator
         : JetDatabaseCreator
     {
+        [SupportedOSPlatform("windows")]
         public override void CreateDatabase(
             string fileNameOrConnectionString,
             DatabaseVersion version = DatabaseVersion.NewestSupported,

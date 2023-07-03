@@ -1,12 +1,14 @@
 using System;
 using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 using System.Linq;
+using System.Runtime.Versioning;
 
 namespace EntityFrameworkCore.Jet.Data
 {
     public class DaoDatabaseCreator
         : JetDatabaseCreator
     {
+        [SupportedOSPlatform("windows")]
         public override void CreateDatabase(
             string fileNameOrConnectionString,
             DatabaseVersion version = DatabaseVersion.NewestSupported,
@@ -85,6 +87,7 @@ namespace EntityFrameworkCore.Jet.Data
             }
         }
         
+        [SupportedOSPlatform("windows")]
         private static dynamic CreateDbEngine()
         {
             var progids = Enumerable.Range(12, 6)

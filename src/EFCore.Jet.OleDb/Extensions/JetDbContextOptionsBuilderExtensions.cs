@@ -3,6 +3,7 @@
 using System;
 using EntityFrameworkCore.Jet.Data;
 using System.Data.OleDb;
+using System.Runtime.Versioning;
 using EntityFrameworkCore.Jet.Infrastructure;
 using JetBrains.Annotations;
 using EntityFrameworkCore.Jet.Utilities;
@@ -64,6 +65,7 @@ namespace Microsoft.EntityFrameworkCore
         /// </param>
         /// <param name="jetOptionsAction">An optional action to allow additional Jet specific configuration.</param>
         /// <returns> The options builder so that further configuration can be chained. </returns>
+        [SupportedOSPlatform("windows")]
         public static DbContextOptionsBuilder<TContext> UseJetOleDb<TContext>(
             [NotNull] this DbContextOptionsBuilder<TContext> optionsBuilder,
             [NotNull] OleDbConnection connection,
@@ -87,6 +89,7 @@ namespace Microsoft.EntityFrameworkCore
         /// </param>
         /// <param name="jetOptionsAction">An optional action to allow additional Jet specific configuration.</param>
         /// <returns> The options builder so that further configuration can be chained. </returns>
+        [SupportedOSPlatform("windows")]
         public static DbContextOptionsBuilder UseJetOleDb(
             [NotNull] this DbContextOptionsBuilder optionsBuilder,
             [NotNull] OleDbConnection connection,

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 
 namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
@@ -94,7 +95,7 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
             //
             
             match = _regExParseCreateDatabaseCommand.Match(commandText);
-            if (match.Success)
+            if (match.Success && OperatingSystem.IsWindows())
             {
                 var fileName = UnescapeSingleQuotes(match.Groups["filename"].Value);
                 var databasePassword = UnescapeSingleQuotes(match.Groups["password"].Value);
@@ -107,7 +108,7 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
             }
 
             match = _regExParseObsoleteCreateDatabaseCommand.Match(commandText);
-            if (match.Success)
+            if (match.Success && OperatingSystem.IsWindows())
             {
                 var fileName = match.Groups["filename"].Value;
                 
@@ -119,7 +120,7 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
             }
             
             match = _regExParseObsoleteCreateDatabaseCommandFromConnection.Match(commandText);
-            if (match.Success)
+            if (match.Success && OperatingSystem.IsWindows())
             {
                 var connectionString = ExtractFileNameFromConnectionString(match.Groups["connectionString"].Value);
                 

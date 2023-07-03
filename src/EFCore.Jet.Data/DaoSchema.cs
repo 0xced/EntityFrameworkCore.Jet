@@ -4,6 +4,7 @@ using System.Data;
 using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Versioning;
 
 namespace EntityFrameworkCore.Jet.Data
 {
@@ -15,12 +16,14 @@ namespace EntityFrameworkCore.Jet.Data
         private readonly dynamic _dbEngine;
         private readonly bool _naturalOnly;
 
+        [SupportedOSPlatform("windows")]
         public DaoSchema(JetConnection connection, bool naturalOnly, bool readOnly)
             : this(connection, readOnly)
         {
             _naturalOnly = naturalOnly;
         }
         
+        [SupportedOSPlatform("windows")]
         public DaoSchema(JetConnection connection, bool readOnly)
         {
             _connection = connection;

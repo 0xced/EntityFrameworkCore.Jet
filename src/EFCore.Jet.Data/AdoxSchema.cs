@@ -4,6 +4,7 @@ using System.Data;
 using System.Data.Common;
 using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 using System.Diagnostics;
+using System.Runtime.Versioning;
 
 namespace EntityFrameworkCore.Jet.Data
 {
@@ -13,12 +14,14 @@ namespace EntityFrameworkCore.Jet.Data
         private readonly dynamic _connection;
         private readonly dynamic _catalog;
 
+        [SupportedOSPlatform("windows")]
         public AdoxSchema(JetConnection connection, bool naturalOnly, bool readOnly)
             : this(connection, readOnly)
         {
             _naturalOnly = naturalOnly;
         }
         
+        [SupportedOSPlatform("windows")]
         public AdoxSchema(JetConnection connection, bool readOnly)
         {
             _connection = new ComObject("ADODB.Connection");

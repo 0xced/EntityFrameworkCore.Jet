@@ -7,6 +7,7 @@ using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
@@ -509,12 +510,14 @@ namespace EntityFrameworkCore.Jet.Data
         public static void ClearAllPools()
             => InnerConnectionFactory.Instance.ClearAllPools();
 
+        [SupportedOSPlatform("windows")]
         public void CreateDatabase(
             DatabaseVersion version = DatabaseVersion.NewestSupported,
             CollatingOrder collatingOrder = CollatingOrder.General,
             string? databasePassword = null)
             => CreateDatabase(DataSource, version, collatingOrder, databasePassword, SchemaProviderType);
 
+        [SupportedOSPlatform("windows")]
         public static void CreateDatabase(
             string fileNameOrConnectionString,
             DatabaseVersion version = DatabaseVersion.NewestSupported,
@@ -707,6 +710,11 @@ namespace EntityFrameworkCore.Jet.Data
 
         private static readonly Lazy<Dictionary<string, Version>> _odbcProviders = new Lazy<Dictionary<string, Version>>(() =>
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return new Dictionary<string, Version>();
+            }
+            
             var drivers = new Dictionary<string, Version>();
 
             try
@@ -750,6 +758,11 @@ namespace EntityFrameworkCore.Jet.Data
 
         private static readonly Lazy<string[]> _oledbProviders = new Lazy<string[]>(() =>
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return Array.Empty<string>();
+            }
+            
             var providers = new List<string>();
 
             try

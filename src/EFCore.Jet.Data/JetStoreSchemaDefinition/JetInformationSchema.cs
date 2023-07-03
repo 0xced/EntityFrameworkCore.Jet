@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
+using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 
 namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
@@ -40,6 +41,11 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
 
             var match = _regExParseInformationSchemaCommand.Match(commandText);
             if (!match.Success)
+            {
+                return null;
+            }
+
+            if (!OperatingSystem.IsWindows())
             {
                 return null;
             }
@@ -106,42 +112,49 @@ namespace EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition
             return selectedDataTable.CreateDataReader();
         }
 
+        [SupportedOSPlatform("windows")]
         private static DataTable GetTables(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);
             return schemaProvider.GetTables();
         }
 
+        [SupportedOSPlatform("windows")]
         private static DataTable GetColumns(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);
             return schemaProvider.GetColumns();
         }
 
+        [SupportedOSPlatform("windows")]
         private static DataTable GetIndexes(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);
             return schemaProvider.GetIndexes();
         }
 
+        [SupportedOSPlatform("windows")]
         private static DataTable GetIndexColumns(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);
             return schemaProvider.GetIndexColumns();
         }
 
+        [SupportedOSPlatform("windows")]
         private static DataTable GetRelations(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);
             return schemaProvider.GetRelations();
         }
 
+        [SupportedOSPlatform("windows")]
         private static DataTable GetRelationColumns(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);
             return schemaProvider.GetRelationColumns();
         }
  
+        [SupportedOSPlatform("windows")]
         private static DataTable GetCheckConstraints(JetConnection connection)
         {
             using var schemaProvider = SchemaProvider.CreateInstance(connection.SchemaProviderType, connection);

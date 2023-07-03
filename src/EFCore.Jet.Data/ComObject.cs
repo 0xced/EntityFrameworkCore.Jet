@@ -2,11 +2,13 @@ using System;
 using System.Dynamic;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
 namespace EntityFrameworkCore.Jet.Data
 {
     // A small wrapper around COM interop to make it more easy to use.
     // See https://github.com/dotnet/runtime/issues/12587#issuecomment-534611966
+    [SupportedOSPlatform("windows")]
     internal class ComObject : DynamicObject, IDisposable
     {
         private object _instance;
