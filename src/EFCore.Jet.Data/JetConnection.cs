@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 using System.IO;
 using System.Linq;
@@ -701,51 +702,20 @@ namespace EntityFrameworkCore.Jet.Data
                     .OrderByDescending(kvp => kvp.Value)
                     .ToArray()
                 : _odbcProviders.Value
-                    .Where(
-                        kvp => kvp.Key.IndexOf("Microsoft Access Driver", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                               (kvp.Key.IndexOf("*.mdb", StringComparison.OrdinalIgnoreCase) >= 0 || kvp.Key.IndexOf("*.accdb", StringComparison.OrdinalIgnoreCase) >= 0))
                     .OrderByDescending(kvp => kvp.Value)
                     .ThenByDescending(kvp => kvp.Key.IndexOf("*.accdb", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
         private static readonly Lazy<Dictionary<string, Version>> _odbcProviders = new Lazy<Dictionary<string, Version>>(() =>
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                return new Dictionary<string, Version>();
-            }
-            
             var drivers = new Dictionary<string, Version>();
 
             try
             {
-                using (var odbcKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\ODBC\ODBCINST.INI"))
+                Func<IEnumerable<KeyValuePair<string, Version>>> enumerateOdbcDrivers = OperatingSystem.IsWindows() ? EnumerateOdbcDriversWindows : EnumerateOdbcDriversUnix;
+                foreach (var driver in enumerateOdbcDrivers())
                 {
-                    if (odbcKey != null)
-                    {
-                        var driverKeyNames = odbcKey.GetSubKeyNames();
-
-                        foreach (var driverKeyName in driverKeyNames)
-                        {
-                            try
-                            {
-                                using (var driverKey = odbcKey.OpenSubKey(driverKeyName))
-                                {
-                                    if (driverKey?.GetValue("Driver") != null)
-                                    {
-                                        if (driverKey.GetValue("DriverODBCVer") is string versionString)
-                                        {
-                                            drivers.Add(driverKeyName, new Version(versionString));
-                                        }
-                                    }
-                                }
-                            }
-                            catch
-                            {
-                                // ignored
-                            }
-                        }
-                    }
+                    drivers[driver.Key] = driver.Value;
                 }
             }
             catch
@@ -755,6 +725,67 @@ namespace EntityFrameworkCore.Jet.Data
 
             return drivers;
         }, true);
+
+        [SupportedOSPlatform("windows")]
+        private static IEnumerable<KeyValuePair<string, Version>> EnumerateOdbcDriversWindows()
+        {
+            using var odbcKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\ODBC\ODBCINST.INI");
+            if (odbcKey == null)
+                yield break;
+
+            foreach (var driverKeyName in odbcKey.GetSubKeyNames())
+            {
+                KeyValuePair<string, Version>? driver = null;
+
+                try
+                {
+                    using var driverKey = odbcKey.OpenSubKey(driverKeyName);
+                    if (driverKey?.GetValue("Driver") != null && driverKey.GetValue("DriverODBCVer") is string versionString && IsMicrosoftAccessDriverWindows(driverKeyName))
+                    {
+                        driver = new KeyValuePair<string, Version>(driverKeyName, new Version(versionString));
+                    }
+                }
+                catch
+                {
+                    // ignored
+                }
+
+                if (driver.HasValue)
+                {
+                    yield return driver.Value;
+                }
+            }
+        }
+
+        [SupportedOSPlatform("windows")]
+        private static bool IsMicrosoftAccessDriverWindows(string driverName)
+        {
+            return driverName.Contains("Microsoft Access Driver", StringComparison.OrdinalIgnoreCase)
+                   && (driverName.Contains("*.mdb", StringComparison.OrdinalIgnoreCase) || driverName.Contains("*.accdb", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static IEnumerable<KeyValuePair<string, Version>> EnumerateOdbcDriversUnix()
+        {
+            using var process = new Process { StartInfo = new ProcessStartInfo("odbcinst", "-q -d") { RedirectStandardOutput = true } };
+            process.Start();
+            process.WaitForExit(10_000);
+            if (process.ExitCode == 0)
+            {
+                // artificial version so that drivers that were added last have the highest version number
+                var version = 1;
+                while (process.StandardOutput.ReadLine() is {} driverName && driverName.StartsWith('[') && driverName.EndsWith(']') && IsMicrosoftAccessDriverUnix(driverName))
+                {
+                    yield return new KeyValuePair<string, Version>(driverName.Substring(1, driverName.Length - 2), new Version(version, 0));
+                    version++;
+                }
+            }
+        }
+
+        private static bool IsMicrosoftAccessDriverUnix(string driverName)
+        {
+            return driverName.Contains("mdb", StringComparison.OrdinalIgnoreCase) // https://github.com/mdbtools/mdbtools
+                   || driverName.Contains("access", StringComparison.OrdinalIgnoreCase); // https://www.easysoft.com/products/data_access/odbc-access-driver/index.html#section=tab-3 or https://www.cdata.com/drivers/access/download/odbc/
+        }
 
         private static readonly Lazy<string[]> _oledbProviders = new Lazy<string[]>(() =>
         {
