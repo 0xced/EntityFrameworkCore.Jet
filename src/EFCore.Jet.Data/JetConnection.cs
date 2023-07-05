@@ -1,13 +1,16 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using EntityFrameworkCore.Jet.Data.JetStoreSchemaDefinition;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
@@ -701,50 +704,27 @@ namespace EntityFrameworkCore.Jet.Data
                     .OrderByDescending(kvp => kvp.Value)
                     .ToArray()
                 : _odbcProviders.Value
-                    .Where(
-                        kvp => kvp.Key.IndexOf("Microsoft Access Driver", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                               (kvp.Key.IndexOf("*.mdb", StringComparison.OrdinalIgnoreCase) >= 0 || kvp.Key.IndexOf("*.accdb", StringComparison.OrdinalIgnoreCase) >= 0))
                     .OrderByDescending(kvp => kvp.Value)
                     .ThenByDescending(kvp => kvp.Key.IndexOf("*.accdb", StringComparison.OrdinalIgnoreCase))
                     .ToArray();
 
         private static readonly Lazy<Dictionary<string, Version>> _odbcProviders = new Lazy<Dictionary<string, Version>>(() =>
         {
-            if (!OperatingSystem.IsWindows())
-            {
-                return new Dictionary<string, Version>();
-            }
-            
             var drivers = new Dictionary<string, Version>();
 
             try
             {
-                using (var odbcKey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\ODBC\ODBCINST.INI"))
+                // artificial version so that drivers that don't have a version and that were added last have the highest version number
+                var artificialVersion = 1;
+                foreach (var driver in Interop.Odbc.GetInstalledDrivers().Where(IsMicrosoftAccessDriver))
                 {
-                    if (odbcKey != null)
+                    if (driver.Properties.TryGetValue("DriverODBCVer", out var driverVersion) && Version.TryParse(driverVersion, out var version))
                     {
-                        var driverKeyNames = odbcKey.GetSubKeyNames();
-
-                        foreach (var driverKeyName in driverKeyNames)
-                        {
-                            try
-                            {
-                                using (var driverKey = odbcKey.OpenSubKey(driverKeyName))
-                                {
-                                    if (driverKey?.GetValue("Driver") != null)
-                                    {
-                                        if (driverKey.GetValue("DriverODBCVer") is string versionString)
-                                        {
-                                            drivers.Add(driverKeyName, new Version(versionString));
-                                        }
-                                    }
-                                }
-                            }
-                            catch
-                            {
-                                // ignored
-                            }
-                        }
+                        drivers[driver.Name] = version;
+                    }
+                    else
+                    {
+                        drivers[driver.Name] = new Version(artificialVersion++, 0);
                     }
                 }
             }
@@ -755,6 +735,18 @@ namespace EntityFrameworkCore.Jet.Data
 
             return drivers;
         }, true);
+
+        private static bool IsMicrosoftAccessDriver(OdbcDriver driver)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return driver.Name.Contains("Microsoft Access Driver", StringComparison.OrdinalIgnoreCase)
+                       && (driver.Name.Contains("*.mdb", StringComparison.OrdinalIgnoreCase) || driver.Name.Contains("*.accdb", StringComparison.OrdinalIgnoreCase));
+            }
+
+            return driver.Name.Contains("mdb", StringComparison.OrdinalIgnoreCase) // https://github.com/mdbtools/mdbtools
+                   || driver.Name.Contains("access", StringComparison.OrdinalIgnoreCase); // https://www.easysoft.com/products/data_access/odbc-access-driver/index.html#section=tab-3 or https://www.cdata.com/drivers/access/download/odbc/
+        }
 
         private static readonly Lazy<string[]> _oledbProviders = new Lazy<string[]>(() =>
         {
@@ -809,5 +801,17 @@ namespace EntityFrameworkCore.Jet.Data
 
         public static bool IsFileName(string fileNameOrConnectionString)
             => JetStoreDatabaseHandling.IsFileName(fileNameOrConnectionString);
+    }
+
+    readonly struct OdbcDriver
+    {
+        public OdbcDriver(string name, Dictionary<string, string> properties)
+        {
+            Name = name;
+            Properties = properties;
+        }
+
+        public string Name { get; }
+        public Dictionary<string, string> Properties { get; }
     }
 }
