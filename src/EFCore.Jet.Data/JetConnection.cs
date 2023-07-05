@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Data;
@@ -9,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
@@ -766,19 +768,54 @@ namespace EntityFrameworkCore.Jet.Data
 
         private static IEnumerable<KeyValuePair<string, Version>> EnumerateOdbcDriversUnix()
         {
-            using var process = new Process { StartInfo = new ProcessStartInfo("odbcinst", "-q -d") { RedirectStandardOutput = true } };
-            process.Start();
-            process.WaitForExit(10_000);
-            if (process.ExitCode == 0)
+            // artificial version so that drivers that were added last have the highest version number
+            var version = 1;
+
+            var pool = ArrayPool<byte>.Shared;
+            var buffer = pool.Rent(4096);
+
+            // var size = Interop.Odbc.SQLGetPrivateProfileString(null, null, null, buffer, buffer.Length, "ODBCINST.INI");
+            if (Interop.Odbc.SQLGetInstalledDrivers(buffer, buffer.Length, out var size) == 1)
             {
-                // artificial version so that drivers that were added last have the highest version number
-                var version = 1;
-                while (process.StandardOutput.ReadLine() is {} driverName && driverName.StartsWith('[') && driverName.EndsWith(']') && IsMicrosoftAccessDriverUnix(driverName))
+                var start = 0;
+                var length = size;
+                while (length > 0)
                 {
-                    yield return new KeyValuePair<string, Version>(driverName.Substring(1, driverName.Length - 2), new Version(version, 0));
-                    version++;
+                    var nulPosition = (ushort)buffer.AsSpan(start, length).IndexOf((byte)0);
+                    if (nulPosition > 0)
+                    {
+                        var driverName = Encoding.UTF8.GetString(buffer, start, nulPosition);
+                        var offset = (ushort)(nulPosition + 1);
+                        start += offset;
+                        length -= offset;
+                        if (IsMicrosoftAccessDriverUnix(driverName))
+                        {
+                            yield return new KeyValuePair<string, Version>(driverName, new Version(version, 0));
+                        }
+                        version++;
+                    }
+                    else
+                    {
+                        break;
+                    }
                 }
             }
+            else
+            {
+                using var process = new Process { StartInfo = new ProcessStartInfo("odbcinst", "-q -d") { RedirectStandardOutput = true } };
+                process.Start();
+                process.WaitForExit(10_000);
+                if (process.ExitCode == 0)
+                {
+                    while (process.StandardOutput.ReadLine() is {} driverName && driverName.StartsWith('[') && driverName.EndsWith(']') && IsMicrosoftAccessDriverUnix(driverName))
+                    {
+                        yield return new KeyValuePair<string, Version>(driverName.Substring(1, driverName.Length - 2), new Version(version, 0));
+                        version++;
+                    }
+                }
+            }
+
+            pool.Return(buffer);
         }
 
         private static bool IsMicrosoftAccessDriverUnix(string driverName)
