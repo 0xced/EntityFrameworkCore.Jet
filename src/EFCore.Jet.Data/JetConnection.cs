@@ -715,7 +715,7 @@ namespace EntityFrameworkCore.Jet.Data
             try
             {
                 Func<IEnumerable<KeyValuePair<string, Version>>> enumerateOdbcDrivers = OperatingSystem.IsWindows() ? EnumerateOdbcDriversWindows : EnumerateOdbcDriversUnix;
-                foreach (var driver in enumerateOdbcDrivers())
+                foreach (var driver in EnumerateOdbcDriversUnix())
                 {
                     drivers[driver.Key] = driver.Value;
                 }
@@ -820,8 +820,10 @@ namespace EntityFrameworkCore.Jet.Data
 
         private static bool IsMicrosoftAccessDriverUnix(string driverName)
         {
-            return driverName.Contains("mdb", StringComparison.OrdinalIgnoreCase) // https://github.com/mdbtools/mdbtools
-                   || driverName.Contains("access", StringComparison.OrdinalIgnoreCase); // https://www.easysoft.com/products/data_access/odbc-access-driver/index.html#section=tab-3 or https://www.cdata.com/drivers/access/download/odbc/
+            return driverName.Contains("Microsoft Access Driver", StringComparison.OrdinalIgnoreCase)
+                   && (driverName.Contains("*.mdb", StringComparison.OrdinalIgnoreCase) || driverName.Contains("*.accdb", StringComparison.OrdinalIgnoreCase));
+            // return driverName.Contains("mdb", StringComparison.OrdinalIgnoreCase) // https://github.com/mdbtools/mdbtools
+            //        || driverName.Contains("access", StringComparison.OrdinalIgnoreCase); // https://www.easysoft.com/products/data_access/odbc-access-driver/index.html#section=tab-3 or https://www.cdata.com/drivers/access/download/odbc/
         }
 
         private static readonly Lazy<string[]> _oledbProviders = new Lazy<string[]>(() =>
