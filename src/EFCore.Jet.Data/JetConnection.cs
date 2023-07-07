@@ -769,7 +769,7 @@ namespace EntityFrameworkCore.Jet.Data
         private static IEnumerable<KeyValuePair<string, Version>> EnumerateOdbcDriversUnix()
         {
             // artificial version so that drivers that were added last have the highest version number
-            var version = 1;
+            var versionNumber = 1;
 
             var pool = ArrayPool<byte>.Shared;
             var buffer = pool.Rent(4096);
@@ -790,9 +790,13 @@ namespace EntityFrameworkCore.Jet.Data
                         length -= offset;
                         if (IsMicrosoftAccessDriverUnix(driverName))
                         {
-                            yield return new KeyValuePair<string, Version>(driverName, new Version(version, 0));
+                            var versionBuffer = pool.Rent(64);
+                            var versionLength = Interop.Odbc.SQLGetPrivateProfileString(section: driverName, entry: "DriverODBCVer", @default: "", versionBuffer, versionBuffer.Length, "ODBCINST.INI");
+                            var version = versionLength > 0 && Version.TryParse(Encoding.UTF8.GetString(versionBuffer, 0, versionLength), out var parsedVersion) ? parsedVersion : new Version(versionNumber, 0);
+                            pool.Return(versionBuffer);
+                            yield return new KeyValuePair<string, Version>(driverName, version);
+                            versionNumber++;
                         }
-                        version++;
                     }
                     else
                     {
@@ -809,8 +813,8 @@ namespace EntityFrameworkCore.Jet.Data
                 {
                     while (process.StandardOutput.ReadLine() is {} driverName && driverName.StartsWith('[') && driverName.EndsWith(']') && IsMicrosoftAccessDriverUnix(driverName))
                     {
-                        yield return new KeyValuePair<string, Version>(driverName.Substring(1, driverName.Length - 2), new Version(version, 0));
-                        version++;
+                        yield return new KeyValuePair<string, Version>(driverName.Substring(1, driverName.Length - 2), new Version(versionNumber, 0));
+                        versionNumber++;
                     }
                 }
             }
